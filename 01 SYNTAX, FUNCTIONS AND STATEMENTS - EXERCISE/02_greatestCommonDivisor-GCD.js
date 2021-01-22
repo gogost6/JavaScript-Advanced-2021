@@ -1,10 +1,10 @@
 function solve(a,b) {
-    for(let i = 2; i <= 10; i++) {
-        if(a % i == 0 && b % i == 0) {
-            console.log(i);
-            break;
-        }
-    }
+    while(b != 0) {
+        let temp = b;
+        b = a % b;
+        a = temp;
+    }   
+    console.log(a);
 }
 solve(15, 5);
-solve(2154, 458);
+solve(2154, 458)
