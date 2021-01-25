@@ -16,8 +16,8 @@ function solve() {
       element[0] = a;
       input[i] = element.join('');
     }
-    document.getElementById('result').innerHTML  = input.join('');
+    document.getElementById('result').textContent  = input.join('');
   } else {
-    document.getElementById('result').innerHTML = 'Error!'
+    document.getElementById('result').textContent = 'Error!'
   }
 }
