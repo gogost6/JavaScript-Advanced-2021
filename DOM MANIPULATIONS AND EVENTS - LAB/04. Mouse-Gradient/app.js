@@ -10,4 +10,4 @@ function attachGradientEvents() {
     function gradientOut(event) {
         document.getElementById('result').textContent = "";
     }
-};
+}
