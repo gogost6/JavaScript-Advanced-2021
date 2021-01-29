@@ -1,15 +1,14 @@
 function validate() {
     const regex = /[a-z]+@[a-z]+\.[a-z]+/gm;
     let input = document.getElementById('email');
-    let value = input.value;
 
-    input.addEventListener('change',checkEmail);
+    input.addEventListener('change', checkEmail);
 
-       function checkEmail(event) {
-           if(event.value.match(regex)){
-               event.removeAttribute('class');
-               return;
-           }
-           event.className = "error"
+    function checkEmail(event) {
+        if (event.target.value.match(regex)) {
+            event.target.removeAttribute('class');
+            return;
         }
+        event.target.className = "error"
+    }
 }
