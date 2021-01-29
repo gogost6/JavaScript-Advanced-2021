@@ -9,7 +9,7 @@ function attachEventsListeners() {
     function convert(event) {
  
         let type = event.target.parentElement.children[1].id;
-        let value = +event.target.parentElement.children[1].value;
+        let value = Number(event.target.parentElement.children[1].value);
  
         let seconds = 0;
  
