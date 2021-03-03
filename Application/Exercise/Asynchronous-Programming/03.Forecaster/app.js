@@ -10,21 +10,23 @@ async function attachEvents() {
         Degrees: '°' 
     }
 
-    const url = `http://localhost:3030/jsonstore/forecaster/locations`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    document.getElementById('submit').addEventListener('click', function () {
-        let found = data.find(x => location.value == x.name);
-        
-        if (found) {
-            document.getElementById('forecast').style = 'display: block;';
-            currentWeather(found);
-            nextThreeDaysForecast(found);
-        } else {
-            document.getElementById('forecast').textContent = 'Error';
-        }
-    })
+    try {
+        const url = `http://localhost:3030/jsonstore/forecaster/locations`;
+        const response = await fetch(url);
+        const data = await response.json();
+    
+        document.getElementById('submit').addEventListener('click', function () {
+            let found = data.find(x => location.value == x.name);
+            
+            if (found) {
+                document.getElementById('forecast').style = 'display: block;';
+                currentWeather(found);
+                nextThreeDaysForecast(found);
+            } 
+        })
+    } catch (error){
+        alert(error);
+    }
 
     async function currentWeather(f) {
         const url = `http://localhost:3030/jsonstore/forecaster/today/${f.code}`;
