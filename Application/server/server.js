@@ -87,8 +87,10 @@
                 'Access-Control-Allow-Origin': '*',
                 'Content-Type': 'application/json'
             };
-            let result;
+            let result = '';
+            let context;
 
+            // NOTE: the OPTIONS method results in undefined result and also it never processes plugins - keep this in mind
             if (method == 'OPTIONS') {
                 Object.assign(headers, {
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -98,7 +100,7 @@
                 });
             } else {
                 try {
-                    const context = processPlugins();
+                    context = processPlugins();
                     await handle(context);
                 } catch (err) {
                     if (err instanceof ServiceError$1) {
@@ -115,6 +117,9 @@
             }
 
             res.writeHead(status, headers);
+            if (context != undefined && context.util != undefined && context.util.throttle) {
+                await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
+            }
             res.end(result);
 
             function processPlugins() {
@@ -130,9 +135,9 @@
                 } else if (serviceName == 'favicon.ico') {
                     return ({ headers, result } = services['favicon'](method, tokens, query, body));
                 }
-                
+
                 const service = services[serviceName];
-                
+
                 if (service === undefined) {
                     status = 400;
                     result = composeErrorObject(400, `Service "${serviceName}" is not supported`);
@@ -276,6 +281,21 @@
 
     var Service_1 = Service;
 
+    function uuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            let r = Math.random() * 16 | 0,
+                v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    var util = {
+        uuid
+    };
+
+    const uuid$1 = util.uuid;
+
+
     const data = fs__default['default'].readdirSync('./data').reduce((p, c) => {
         const content = JSON.parse(fs__default['default'].readFileSync('./data/' + c));
         const collection = c.slice(0, -5);
@@ -310,7 +330,7 @@
                 responseData = responseData[token];
             }
 
-            const newId = uuid();
+            const newId = uuid$1();
             responseData[newId] = Object.assign({}, body, { _id: newId });
             return responseData[newId];
         },
@@ -355,13 +375,6 @@
     dataService.put(':collection', actions.put);
     dataService.delete(':collection', actions.delete);
 
-    function uuid() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            let r = Math.random() * 16 | 0,
-                v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
 
     var jsonstore = dataService.parseRequest;
 
@@ -431,6 +444,17 @@
                 return context.storage.get();
             }
 
+            if (query.distinct) {
+                const props = query.distinct.split(',').filter(p => p != '');
+                responseData = Object.values(responseData.reduce((distinct, c) => {
+                    const key = props.map(p => c[p]).join('::');
+                    if (distinct.hasOwnProperty(key) == false) {
+                        distinct[key] = c;
+                    }
+                    return distinct;
+                }, {}));
+            }
+
             if (query.count) {
                 return responseData.length;
             }
@@ -471,7 +495,25 @@
                     return result;
                 });
             }
+
+            if (query.load) {
+                const props = query.load.split(',').filter(p => p != '');
+                props.map(prop => {
+                    const [propName, relationTokens] = prop.split('=');
+                    const [idSource, collection] = relationTokens.split(':');
+                    console.log(`Loading related records from "${collection}" into "${propName}", joined on "_id"="${idSource}"`);
+                    const storageSource = collection == 'users' ? context.protectedStorage : context.storage;
+                    responseData.forEach(r => {
+                        const seekId = r[idSource];
+                        const related = storageSource.get(collection, seekId);
+                        delete related.hashedPassword;
+                        r[propName] = related;
+                    });
+                });
+            }
+
         } catch (err) {
+            console.error(err);
             throw new NotFoundError$1();
         }
 
@@ -591,26 +633,66 @@
         };
     };
 
-    //const admin = require('./admin');
+    var require$$0 = "<!DOCTYPE html>\r\n<html lang=\"en\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <title>SUPS Admin Panel</title>\r\n    <style>\r\n        * {\r\n            padding: 0;\r\n            margin: 0;\r\n        }\r\n\r\n        body {\r\n            padding: 32px;\r\n            font-size: 16px;\r\n        }\r\n\r\n        .layout::after {\r\n            content: '';\r\n            clear: both;\r\n            display: table;\r\n        }\r\n\r\n        .col {\r\n            display: block;\r\n            float: left;\r\n        }\r\n\r\n        p {\r\n            padding: 8px 16px;\r\n        }\r\n\r\n        table {\r\n            border-collapse: collapse;\r\n        }\r\n\r\n        caption {\r\n            font-size: 120%;\r\n            text-align: left;\r\n            padding: 4px 8px;\r\n            font-weight: bold;\r\n            background-color: #ddd;\r\n        }\r\n\r\n        table, tr, th, td {\r\n            border: 1px solid #ddd;\r\n        }\r\n\r\n        th, td {\r\n            padding: 4px 8px;\r\n        }\r\n\r\n        ul {\r\n            list-style: none;\r\n        }\r\n\r\n        .collection-list a {\r\n            display: block;\r\n            width: 120px;\r\n            padding: 4px 8px;\r\n            text-decoration: none;\r\n            color: black;\r\n            background-color: #ccc;\r\n        }\r\n        .collection-list a:hover {\r\n            background-color: #ddd;\r\n        }\r\n        .collection-list a:visited {\r\n            color: black;\r\n        }\r\n    </style>\r\n    <script type=\"module\">\nimport { html, render } from 'https://unpkg.com/lit-html?module';\nimport { until } from 'https://unpkg.com/lit-html/directives/until?module';\n\nconst api = {\r\n    async get(url) {\r\n        return json(url);\r\n    },\r\n    async post(url, body) {\r\n        return json(url, {\r\n            method: 'POST',\r\n            headers: { 'Content-Type': 'application/json' },\r\n            body: JSON.stringify(body)\r\n        });\r\n    }\r\n};\r\n\r\nasync function json(url, options) {\r\n    return await (await fetch('/' + url, options)).json();\r\n}\r\n\r\nasync function getCollections() {\r\n    return api.get('data');\r\n}\r\n\r\nasync function getRecords(collection) {\r\n    return api.get('data/' + collection);\r\n}\r\n\r\nasync function getThrottling() {\r\n    return api.get('util/throttle');\r\n}\r\n\r\nasync function setThrottling(throttle) {\r\n    return api.post('util', { throttle });\r\n}\n\nasync function collectionList(onSelect) {\r\n    const collections = await getCollections();\r\n\r\n    return html`\r\n    <ul class=\"collection-list\">\r\n        ${collections.map(collectionLi)}\r\n    </ul>`;\r\n\r\n    function collectionLi(name) {\r\n        return html`<li><a href=\"javascript:void(0)\" @click=${(ev) => onSelect(ev, name)}>${name}</a></li>`;\r\n    }\r\n}\n\nasync function recordTable(collectionName) {\r\n    const records = await getRecords(collectionName);\r\n    const layout = getLayout(records);\r\n\r\n    return html`\r\n    <table>\r\n        <caption>${collectionName}</caption>\r\n        <thead>\r\n            <tr>${layout.map(f => html`<th>${f}</th>`)}</tr>\r\n        </thead>\r\n        <tbody>\r\n            ${records.map(r => recordRow(r, layout))}\r\n        </tbody>\r\n    </table>`;\r\n}\r\n\r\nfunction getLayout(records) {\r\n    const result = new Set(['_id']);\r\n    records.forEach(r => Object.keys(r).forEach(k => result.add(k)));\r\n\r\n    return [...result.keys()];\r\n}\r\n\r\nfunction recordRow(record, layout) {\r\n    return html`\r\n    <tr>\r\n        ${layout.map(f => html`<td>${JSON.stringify(record[f]) || html`<span>(missing)</span>`}</td>`)}\r\n    </tr>`;\r\n}\n\nasync function throttlePanel(display) {\r\n    const active = await getThrottling();\r\n\r\n    return html`\r\n    <p>\r\n        Request throttling: </span>${active}</span>\r\n        <button @click=${(ev) => set(ev, true)}>Enable</button>\r\n        <button @click=${(ev) => set(ev, false)}>Disable</button>\r\n    </p>`;\r\n\r\n    async function set(ev, state) {\r\n        ev.target.disabled = true;\r\n        await setThrottling(state);\r\n        display();\r\n    }\r\n}\n\n//import page from '//unpkg.com/page/page.mjs';\r\n\r\n\r\nfunction start() {\r\n    const main = document.querySelector('main');\r\n    editor(main);\r\n}\r\n\r\nasync function editor(main) {\r\n    let list = html`<div class=\"col\">Loading&hellip;</div>`;\r\n    let viewer = html`<div class=\"col\">\r\n    <p>Select collection to view records</p>\r\n</div>`;\r\n    display();\r\n\r\n    list = html`<div class=\"col\">${await collectionList(onSelect)}</div>`;\r\n    display();\r\n\r\n    async function display() {\r\n        render(html`\r\n        <section class=\"layout\">\r\n            ${until(throttlePanel(display), html`<p>Loading</p>`)}\r\n        </section>\r\n        <section class=\"layout\">\r\n            ${list}\r\n            ${viewer}\r\n        </section>`, main);\r\n    }\r\n\r\n    async function onSelect(ev, name) {\r\n        ev.preventDefault();\r\n        viewer = html`<div class=\"col\">${await recordTable(name)}</div>`;\r\n        display();\r\n    }\r\n}\r\n\r\nstart();\n\n</script>\r\n</head>\r\n<body>\r\n    <main>\r\n        Loading&hellip;\r\n    </main>\r\n</body>\r\n</html>";
+
+    const mode = process.argv[2] == '-dev' ? 'dev' : 'prod';
+
+    const files = {
+        index: mode == 'prod' ? require$$0 : fs__default['default'].readFileSync('./client/index.html', 'utf-8')
+    };
+
+    var admin = (method, tokens, query, body) => {
+        const headers = {
+            'Content-Type': 'text/html'
+        };
+        let result = '';
+
+        const resource = tokens.join('/');
+        if (resource && resource.split('.').pop() == 'js') {
+            headers['Content-Type'] = 'application/javascript';
+
+            files[resource] = files[resource] || fs__default['default'].readFileSync('./client/' + resource, 'utf-8');
+            result = files[resource];
+        } else {
+            result = files.index;
+        }
+
+        return {
+            headers,
+            result
+        };
+    };
+
+    /*
+     * This service requires util plugin
+     */
+
+    const utilService = new Service_1();
+
+    utilService.post('*', onRequest);
+    utilService.get(':service', getStatus);
+
+    function getStatus(context, tokens, query, body) {
+        return context.util[context.params.service];
+    }
+
+    function onRequest(context, tokens, query, body) {
+        Object.entries(body).forEach(([k,v]) => {
+            console.log(`${k} ${v ? 'enabled' : 'disabled'}`);
+            context.util[k] = v;
+        });
+        return '';
+    }
+
+    var util$1 = utilService.parseRequest;
 
     var services = {
         jsonstore,
         users,
         data: data$1,
         favicon,
-        //admin
-    };
-
-    function uuid$1() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            let r = Math.random() * 16 | 0,
-                v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-    var util = {
-        uuid: uuid$1
+        admin,
+        util: util$1
     };
 
     const { uuid: uuid$2 } = util;
@@ -930,6 +1012,18 @@
 
     var auth = initPlugin$1;
 
+    function initPlugin$2(settings) {
+        const util = {
+            throttle: false
+        };
+
+        return function decoreateContext(context, request) {
+            context.util = util;
+        };
+    }
+
+    var util$2 = initPlugin$2;
+
     var identity = "email";
     var protectedData = {
     	users: {
@@ -1003,6 +1097,15 @@
     			_createdOn: 1613551388703
     		}
     	},
+    	comments: {
+    		"0a272c58-b7ea-4e09-a000-7ec988248f66": {
+    			_ownerId: "35c62d76-8152-4626-8712-eeb96381bea8",
+    			content: "Great recipe!",
+    			recipeId: "8f414b4f-ab39-4d36-bedb-2ad69da9c830",
+    			_createdOn: 1614260681375,
+    			_id: "0a272c58-b7ea-4e09-a000-7ec988248f66"
+    		}
+    	},
     	records: {
     		i01: {
     			name: "John1",
@@ -1054,6 +1157,30 @@
     			val: 1,
     			_createdOn: 1613551388793
     		}
+    	},
+    	catches: {
+    		"07f260f4-466c-4607-9a33-f7273b24f1b4": {
+    			_ownerId: "35c62d76-8152-4626-8712-eeb96381bea8",
+    			angler: "Paulo Admorim",
+    			weight: 636,
+    			species: "Atlantic Blue Marlin",
+    			location: "Vitoria, Brazil",
+    			bait: "trolled pink",
+    			"captureTime ": 80,
+    			_createdOn: 1614760714812,
+    			_id: "07f260f4-466c-4607-9a33-f7273b24f1b4"
+    		},
+    		"bdabf5e9-23be-40a1-9f14-9117b6702a9d": {
+    			_ownerId: "847ec027-f659-4086-8032-5173e2f9c93a",
+    			angler: "John Does",
+    			weight: 554,
+    			species: "Atlantic Blue Marlin",
+    			location: "Buenos Aires, Argentina",
+    			bait: "trolled pink",
+    			"captureTime ": 120,
+    			_createdOn: 1614760782277,
+    			_id: "bdabf5e9-23be-40a1-9f14-9117b6702a9d"
+    		}
     	}
     };
     var settings = {
@@ -1064,7 +1191,8 @@
 
     const plugins = [
         storage(settings),
-        auth(settings)
+        auth(settings),
+        util$2()
     ];
 
     const server = http__default['default'].createServer(requestHandler(plugins, services));
@@ -1072,7 +1200,7 @@
     const port = 3030;
     server.listen(port);
     console.log(`Server started on port ${port}. You can make requests to http://localhost:${port}/`);
-    //console.log(`Admin panel located at http://localhost:${port}/admin`);
+    console.log(`Admin panel located at http://localhost:${port}/admin`);
 
     var softuniPracticeServer = {
 
