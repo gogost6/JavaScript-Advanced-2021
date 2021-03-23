@@ -92,9 +92,10 @@ export async function editPage(ctx) {
 
 
     async function onLogout() {
-        confirm('Do you want to logout?')
-        await api.logout();
-        ctx.page.redirect('/');
+        if(confirm('Do you want to logout?')) {
+            await api.logout();
+            ctx.page.redirect('/');
+        }
     }
 
     ctx.render(editTemplate(data, onLogout, onSubmit))

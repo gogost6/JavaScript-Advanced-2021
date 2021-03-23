@@ -45,9 +45,10 @@ function itemTemplate(item) {
 export async function myFurniturePage(ctx) {
     const data = await getMyFurnitures();
     async function onLogout() {
-        confirm('Do you want to logout?')
-        await logout();
-        ctx.page.redirect('/');
+        if(confirm('Do you want to logout?')) {
+            await logout();
+            ctx.page.redirect('/');
+        }
     }
     ctx.render(myFurnitureTemplate(data, onLogout));
 }
