@@ -40,35 +40,34 @@ function getOptions(method = 'get', body) {
     return options;
 }
 
-export async function getCarDetails(id) {
-    return await request(host + '/data/cars/' + id, getOptions());
+export async function getDetails(id) {
+    return await request(host + '/data/wiki/' + id, getOptions());
 };
 
-export async function getMyCars() {
-    const userId = sessionStorage.getItem('userId');
-    return await request(host + `/data/cars?where=_ownerId%3D%22${userId}%22&sortBy=_createdOn%20desc`, getOptions());
+export async function get() {
+    return await request(host + '/data/wiki?sortBy=_createdOn%20desc', getOptions());
 };
 
-export async function getAllCars(page = 1) {
-    return await request(host + `/data/cars?sortBy=_createdOn%20desc&offset=${(page - 1) * 3}&pageSize=3`, getOptions());
+export async function getHome() {
+    return await request(host + '/data/wiki?sortBy=_createdOn%20desc&distinct=category', getOptions());
 };
 
 export async function create(data) {
-    return await request(host + '/data/cars', getOptions('post', data));
+    return await request(host + '/data/wiki', getOptions('post', data));
 };
 
 export async function edit(id, data) {
-    return await request(host + '/data/cars/' + id, getOptions('put', data));
+    return await request(host + '/data/wiki/' + id, getOptions('put', data));
 }
 
 export async function del(id) {
-    return await request(host + '/data/cars/' + id, getOptions('delete'));
+    return await request(host + '/data/wiki/' + id, getOptions('delete'));
 };
 
-export async function login(username , password) {
-    const result =  await request(host + '/users/login', getOptions('post', { username, password}));
+export async function login(email , password) {
+    const result =  await request(host + '/users/login', getOptions('post', {email, password}));
     
-    sessionStorage.setItem('username', result.username);
+    sessionStorage.setItem('email', result.email);
     sessionStorage.setItem('authToken', result.accessToken);
     sessionStorage.setItem('userId', result._id);
     
@@ -78,17 +77,17 @@ export async function login(username , password) {
 export async function logout() {
     const result = await request(host + '/users/logout', getOptions());
     
-    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('email');
     sessionStorage.removeItem('authToken');
     sessionStorage.removeItem('userId');
     
     return result;
 };
 
-export async function register(username, password) {
-    const result = await request(host + '/users/register', getOptions('post', { username, password }));
+export async function register(email, password) {
+    const result = await request(host + '/users/register', getOptions('post', { email, password }));
     
-    sessionStorage.setItem('username', result.email);
+    sessionStorage.setItem('email', result.email);
     sessionStorage.setItem('authToken', result.accessToken);
     sessionStorage.setItem('userId', result._id);
     
@@ -96,9 +95,5 @@ export async function register(username, password) {
 };
 
 export async function search(query) {
-    return await request(host + `/data/cars?where=year%3D${query}`)
+    return await request(host + `/data/wiki?where=title%20LIKE%20%22${query}%22`, getOptions('get'))
 }
-
-export async function getCollectionSize() {
-    return await request(host + '/data/cars?count', getOptions());
-};
